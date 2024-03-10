@@ -37,9 +37,9 @@ uint8_t eeprom_cat_c::set_wrenable(bool enabled){
 
 uint8_t eeprom_cat_c::write_data(char* src, uint8_t section, uint32_t index){
 	if (com->Get_Status() == com_state_e::Idle){
-		msgHeader = 0;
+		msgHeader = 1;
 		msgWrite = 1;
-		msgWren = 0;
+		msgWren = 1;
 		memAddr = (index * sections[section].objectSize) + sections[section].offset;
 		msgRem = sections[section].objectSize;
 		if ((memAddr + msgRem) > maxAddr){
@@ -57,7 +57,7 @@ uint8_t eeprom_cat_c::read_data(char* dest, uint8_t section, uint32_t index){
 	if (com->Get_Status() == com_state_e::Idle){
 		msgHeader = 1;
 		msgWrite = 0;
-		msgWren = 1;
+		msgWren = 0;
 		memAddr = (index * sections[section].objectSize) + sections[section].offset;
 		msgRem = sections[section].objectSize;
 		if ((memAddr + msgRem) > maxAddr){
@@ -74,12 +74,18 @@ uint8_t eeprom_cat_c::read_data(char* dest, uint8_t section, uint32_t index){
 void eeprom_cat_c::transfer(){
 	if (msgHeader){
 		com->Select_Slave(-1);
-		msgHeader = 0;
-		memHeader[0] = msgWrite ? 0b0010 : 0b0011;
-		memHeader[1] = (memAddr >> 8) & 0xff;
-		memHeader[2] = memAddr & 0xff;
-		com->Select_Slave(comSlaveNum);
-		com->Transfer(&memHeader[0], 3, RxTx);
+		if (!msgWrite || msgWren){
+			msgHeader = 0;
+			msgWren = 0;	// wren resets after each write operation
+			memHeader[0] = msgWrite ? 0b0010 : 0b0011;
+			memHeader[1] = (memAddr >> 8) & 0xff;
+			memHeader[2] = memAddr & 0xff;
+			com->Select_Slave(comSlaveNum);
+			com->Transfer(&memHeader[0], 3, RxTx);
+		} else {
+			msgWren = 1;
+			set_wrenable(1);
+		}
 	} else {
 		uint8_t maxLen = 64 - (memAddr & (64-1));	// Bytes until page end
 		msgHeader = 1;
@@ -98,15 +104,10 @@ void eeprom_cat_c::transfer(){
 }
 
 void eeprom_cat_c::com_cb(){
-	if (msgRem > 0){
+	if (msgRem <= 0){
 		// Transaction done
 		com->Select_Slave(-1);
 		complete_cb();
-	} else if (!msgWren){
-		// Send WREN command
-		com->Select_Slave(-1);
-		msgWren = 1;
-		set_wrenable(1);
 	} else {
 		// Continue transfer
 		transfer();

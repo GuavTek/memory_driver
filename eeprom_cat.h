@@ -44,7 +44,7 @@ class eeprom_cat_c : public com_driver_c {
 	char memHeader[3];
 	uint16_t memAddr;
 	char* msgBuff;
-	uint16_t msgRem;
+	int16_t msgRem;
 	eeprom_cat_section_t* sections;
 };
 
