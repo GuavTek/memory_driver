@@ -1,5 +1,5 @@
 
 add_library(eeprom_cat_driver INTERFACE)
 target_sources(eeprom_cat_driver PUBLIC eeprom_cat.cpp)
-target_link_libraries(eeprom_cat_driver INTERFACE pico_stdlib combase_driver)
+target_link_libraries(eeprom_cat_driver INTERFACE combase_driver)
 target_include_directories(eeprom_cat_driver INTERFACE ${CMAKE_CURRENT_LIST_DIR})
