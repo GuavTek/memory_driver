@@ -18,7 +18,6 @@ struct eeprom_cat_section_t {
 };
 
 struct eeprom_cat_conf_t {
-	uint8_t comSlaveNum;
 	uint32_t maxAddr;
 };
 
@@ -30,11 +29,8 @@ class eeprom_cat_c : public com_driver_c {
 	uint8_t read_data(char* dest, uint8_t section, uint32_t index);
 	inline void set_callback(void (*cb)()) {complete_cb = cb;}
 	void com_cb();
-	eeprom_cat_c(communication_base_c* const comInstance) {com = comInstance;};
-	~eeprom_cat_c() {};
+	using com_driver_c::com_driver_c;
 	protected:
-	communication_base_c* com;
-	uint8_t comSlaveNum;
 	void transfer();
 	uint32_t maxAddr;
 	void (*complete_cb)();
