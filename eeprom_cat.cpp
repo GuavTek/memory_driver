@@ -3,7 +3,7 @@
  *
  * Created: 04/02/2024 19:05:31
  *  Author: GuavTek
- */ 
+ */
 
 #include "eeprom_cat.h"
 #include <malloc.h>
@@ -18,13 +18,13 @@ void eeprom_cat_c::init(const eeprom_cat_conf_t conf, const eeprom_cat_section_t
 
 uint8_t eeprom_cat_c::set_wrenable(bool enabled){
 	if (com->Get_Status() == Idle){
-		
+
 		if (enabled){
 			memHeader[0] = 0b00000110;
 		} else {
 			memHeader[0] = 0b00000100;
 		}
-		
+
 		Set_SS(1);
 		com->Transfer(&memHeader[0], 1, RxTx);
 		return 1;
@@ -57,6 +57,24 @@ uint8_t eeprom_cat_c::read_data(char* dest, uint8_t section, uint32_t index){
 		msgWren = 0;
 		memAddr = (index * sections[section].objectSize) + sections[section].offset;
 		msgRem = sections[section].objectSize;
+		if ((memAddr + msgRem) > maxAddr){
+			// Out of memory
+			return 0;
+		}
+		msgBuff = dest;
+		transfer();
+		return 1;
+	}
+	return 0;
+}
+
+uint8_t eeprom_cat_c::read_items(char* dest, uint8_t section, uint32_t index, uint32_t num){
+	if (com->Get_Status() == com_state_e::Idle){
+		msgHeader = 1;
+		msgWrite = 0;
+		msgWren = 0;
+		memAddr = (index * sections[section].objectSize) + sections[section].offset;
+		msgRem = sections[section].objectSize * num;
 		if ((memAddr + msgRem) > maxAddr){
 			// Out of memory
 			return 0;
