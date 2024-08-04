@@ -103,14 +103,11 @@ void eeprom_cat_c::transfer(){
 		msgStatus = 0;
 		wrBusy = memHeader[1] & 0b1;
 	}
-	if (wrBusy) {
-		Set_SS(0);
-		get_status();	// TODO: let other drivers use bus
-		return;
-	}
 	if (msgHeader){
 		Set_SS(0);
-		if (!msgWrite || msgWren){
+		if (wrBusy) {
+			get_status();	// TODO: let other drivers use bus
+		} else if (!msgWrite || msgWren){
 			msgHeader = 0;
 			msgWren = 0;	// wren resets after each write operation
 			wrBusy = msgWrite;
@@ -120,7 +117,6 @@ void eeprom_cat_c::transfer(){
 			Set_SS(1);
 			com->Transfer(&memHeader[0], 3, RxTx);
 		} else {
-			msgWren = 1;
 			set_wrenable(1);
 		}
 	} else {
@@ -131,7 +127,6 @@ void eeprom_cat_c::transfer(){
 			msgRem -= maxLen;
 			msgBuff = &msgBuff[maxLen];
 			memAddr += maxLen;
-			msgWren = !msgWrite;
 		} else {
 			// Final data being sent
 			com->Transfer(msgBuff, msgRem, RxTx);
