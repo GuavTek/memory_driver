@@ -28,7 +28,8 @@ class eeprom_cat_c : public com_driver_c {
 		uint8_t write_data(char* src, uint8_t section, uint32_t index);
 		uint8_t read_data(char* dest, uint8_t section, uint32_t index);
 		uint8_t read_items(char* dest, uint8_t section, uint32_t index, uint32_t num);
-		inline uint8_t is_busy() {return com->Get_Status() != Idle;}
+		uint8_t get_status();
+		inline uint8_t is_busy() {return (com->Get_Status() != Idle) || wrBusy;}
 		inline void set_callback(void (*cb)()) {complete_cb = cb;}
 		void com_cb();
 		using com_driver_c::com_driver_c;
@@ -39,6 +40,8 @@ class eeprom_cat_c : public com_driver_c {
 		bool msgHeader;
 		bool msgWrite;
 		bool msgWren;
+		bool msgStatus;
+		bool wrBusy;
 		char memHeader[3];
 		uint16_t memAddr;
 		char* msgBuff;

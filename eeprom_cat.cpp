@@ -51,6 +51,19 @@ uint8_t eeprom_cat_c::write_data(char* src, uint8_t section, uint32_t index){
 	return 0;
 }
 
+uint8_t eeprom_cat_c::get_status(){
+	if (com->Get_Status() == com_state_e::Idle){
+		msgStatus = 1;
+		memHeader[0] = 0b0101;
+		memHeader[1] = 0;
+		memHeader[2] = 0;
+		Set_SS(1);
+		com->Transfer(&memHeader[0], 3, RxTx);
+		return 1;
+	}
+	return 0;
+}
+
 uint8_t eeprom_cat_c::read_data(char* dest, uint8_t section, uint32_t index){
 	if (com->Get_Status() == com_state_e::Idle){
 		msgHeader = 1;
@@ -86,11 +99,21 @@ uint8_t eeprom_cat_c::read_items(char* dest, uint8_t section, uint32_t index, ui
 }
 
 void eeprom_cat_c::transfer(){
+	if (msgStatus) {
+		msgStatus = 0;
+		wrBusy = memHeader[1] & 0b1;
+	}
+	if (wrBusy) {
+		Set_SS(0);
+		get_status();	// TODO: let other drivers use bus
+		return;
+	}
 	if (msgHeader){
 		Set_SS(0);
 		if (!msgWrite || msgWren){
 			msgHeader = 0;
 			msgWren = 0;	// wren resets after each write operation
+			wrBusy = msgWrite;
 			memHeader[0] = msgWrite ? 0b0010 : 0b0011;
 			memHeader[1] = (memAddr >> 8) & 0xff;
 			memHeader[2] = memAddr & 0xff;
@@ -121,7 +144,17 @@ void eeprom_cat_c::com_cb(){
 	if (msgRem <= 0){
 		// Transaction done
 		Set_SS(0);
-		complete_cb();
+		if (msgStatus) {
+			msgStatus = 0;
+			wrBusy = memHeader[1] & 0b1;
+		}
+		if (wrBusy) {
+			// Check status register until it is ready for write operations
+			// TODO: this does not need to hog the bus, let other drivers use it
+			get_status();
+		} else {
+			complete_cb();
+		}
 	} else {
 		// Continue transfer
 		transfer();
