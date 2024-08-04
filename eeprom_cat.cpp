@@ -20,8 +20,10 @@ uint8_t eeprom_cat_c::set_wrenable(bool enabled){
 	if (com->Get_Status() == Idle){
 
 		if (enabled){
+			msgWren = 1;
 			memHeader[0] = 0b00000110;
 		} else {
+			msgWren = 0;
 			memHeader[0] = 0b00000100;
 		}
 
@@ -36,7 +38,6 @@ uint8_t eeprom_cat_c::write_data(char* src, uint8_t section, uint32_t index){
 	if (com->Get_Status() == com_state_e::Idle){
 		msgHeader = 1;
 		msgWrite = 1;
-		msgWren = 1;
 		memAddr = (index * sections[section].objectSize) + sections[section].offset;
 		msgRem = sections[section].objectSize;
 		if ((memAddr + msgRem) > maxAddr){
@@ -44,7 +45,7 @@ uint8_t eeprom_cat_c::write_data(char* src, uint8_t section, uint32_t index){
 			return 0;
 		}
 		msgBuff = src;
-		set_wrenable(1);
+		transfer();
 		return 1;
 	}
 	return 0;
@@ -54,7 +55,6 @@ uint8_t eeprom_cat_c::read_data(char* dest, uint8_t section, uint32_t index){
 	if (com->Get_Status() == com_state_e::Idle){
 		msgHeader = 1;
 		msgWrite = 0;
-		msgWren = 0;
 		memAddr = (index * sections[section].objectSize) + sections[section].offset;
 		msgRem = sections[section].objectSize;
 		if ((memAddr + msgRem) > maxAddr){
@@ -72,7 +72,6 @@ uint8_t eeprom_cat_c::read_items(char* dest, uint8_t section, uint32_t index, ui
 	if (com->Get_Status() == com_state_e::Idle){
 		msgHeader = 1;
 		msgWrite = 0;
-		msgWren = 0;
 		memAddr = (index * sections[section].objectSize) + sections[section].offset;
 		msgRem = sections[section].objectSize * num;
 		if ((memAddr + msgRem) > maxAddr){
